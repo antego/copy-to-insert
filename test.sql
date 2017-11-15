@@ -18,3 +18,9 @@ COPY x (b, d) from stdin;
 4	test_4
 5	test_5
 \.
+
+COPY x (b, c, d, e) from stdin with oids delimiter ',' null 'x';
+500000,x,45,80,90
+500001,x,\x,\\x,\\\x
+500002,x,\,,\\\,,\\
+\.

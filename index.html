@@ -26,20 +26,24 @@
         }
     }
 
-    const regex = new RegExp(/copy(.+)from/gi);
-    const delimRegex = /\t/g;
-    const nullRegex = /'\\N'/g;
+    const copyRegex = new RegExp(/copy(.+)from/gi);
+    let delimRegex = /\t/g;
+    let nullRegex = /'\\N'/g;
+    const nullOptionRegex = /null\s*'(\S*)'/i;
 
     function convertLines(originLines, targetLines) {
         let insideCopy = false;
         let lastCopyPos = 0;
         for (let lineNum = 0; lineNum < originLines.length; lineNum++) {
             const line = originLines[lineNum];
-            if (line.match(regex)) {
-                const tableAndFields = regex.exec(line)[1];
+            if (line.match(copyRegex)) {
+                const tableAndFields = copyRegex.exec(line)[1];
                 targetLines.push("insert into" + tableAndFields + "values ");
                 insideCopy = true;
                 lastCopyPos = lineNum;
+                if (line.match(nullOptionRegex)) {
+                    nullRegex = new RegExp("'" + nullOptionRegex.exec(line)[1] + "'", "g")
+                }
             } else if (line.startsWith("\\.")) {
                 insideCopy = false;
                 // not converting empty copy statements
