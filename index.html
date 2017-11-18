@@ -26,15 +26,37 @@
         }
     }
 
+    function replaceEscapeWise(line, delim, escape, replace) {
+        var delimRegex = new RegExp(escape + "*" + delim, "g");
+        var matches = line.match(delimRegex);
+        if (matches === null) {
+            return line;
+        }
+        var chunks = line.split(delimRegex);
+
+        var result = chunks[0];
+        for (var i = 0; i < matches.length; i++) {
+            var match = matches[i];
+            if ((match.length - delim.length) % 2 === 0) {
+                result += match.replace(delim, replace);
+            } else {
+                result += match;
+            }
+            result += chunks[i + 1];
+        }
+        return result;
+    }
+
     const copyRegex = new RegExp(/copy(.+)from/gi);
-    let delimRegex = /\t/g;
-    let nullRegex = /'\\N'/g;
+    var delim = "\t";
+    var nullRegex = /'\\N'/g;
+    const delimOptionRegex = /delimiter\s*'(\S*)'/i;
     const nullOptionRegex = /null\s*'(\S*)'/i;
 
     function convertLines(originLines, targetLines) {
-        let insideCopy = false;
-        let lastCopyPos = 0;
-        for (let lineNum = 0; lineNum < originLines.length; lineNum++) {
+        var insideCopy = false;
+        var lastCopyPos = 0;
+        for (var lineNum = 0; lineNum < originLines.length; lineNum++) {
             const line = originLines[lineNum];
             if (line.match(copyRegex)) {
                 const tableAndFields = copyRegex.exec(line)[1];
@@ -43,6 +65,9 @@
                 lastCopyPos = lineNum;
                 if (line.match(nullOptionRegex)) {
                     nullRegex = new RegExp("'" + nullOptionRegex.exec(line)[1] + "'", "g")
+                }
+                if (line.match(delimOptionRegex)) {
+                    delim = delimOptionRegex.exec(line)[1];
                 }
             } else if (line.startsWith("\\.")) {
                 insideCopy = false;
@@ -55,7 +80,8 @@
                     targetLines.push(lastValues.substr(0, lastValues.length - 1) + ";")
                 }
             } else if (insideCopy === true) {
-                let insertLine = "('" + line.replace(delimRegex, "', '") + "'),";
+                var insertLine = replaceEscapeWise(line, delim, "\\\\", "', '");
+                insertLine = "('" + insertLine + "'),";
                 insertLine = insertLine.replace(nullRegex, "NULL");
                 targetLines.push(insertLine);
             } else {
